@@ -15,7 +15,8 @@ struct Args {
 
 fn main() -> io::Result<()> {
     let Args {input, output} = Args::parse();
-    let output = output.unwrap_or_else(|| Path::new("./").with_file_name(input.file_name().unwrap()).with_extension("mp4"));
+    let mut output = output.unwrap_or_else(|| Path::new("./").with_file_name(input.file_name().unwrap()));
+    output.set_extension("mp4");
 
     if input.is_dir() { 
         panic!("Input must be a file, not a directory")
@@ -39,12 +40,12 @@ fn main() -> io::Result<()> {
                 let iter = buf[..num].chunks_exact(2);
                 
                 iter.clone().for_each(|pair| {
+                    println!("Writing {:?}", pair);
                     for wd in 0..SQUARE {
                         for hd in 0..SQUARE { 
                             if frame[h+hd][w+1+(wd*3)] != 0 || frame[h+hd][w+2+(wd*3)] != 0 {
                                 panic!("Overwriting non-zero value");
                             } 
-                            println!("Writing {:?}", pair);
                             frame[h+hd][w+1+(wd*3)] = pair[0];
                             frame[h+hd][w+2+(wd*3)] = pair[1];
                         }
@@ -53,12 +54,12 @@ fn main() -> io::Result<()> {
                 });
 
                 if let Some(byte) = iter.remainder().first() {
+                    println!("Writing byte {}", byte);
                     for wd in 0..SQUARE {
                         for hd in 0..SQUARE { 
                             if frame[h+hd][w+1+(wd*3)] != 0 || frame[h+hd][w+2+(wd*3)] != 0 {
                                 panic!("Overwriting non-zero value");
                             } 
-                            println!("Writing 1 byte: {}", byte);
                             frame[h+hd][w+1+(wd*3)] = *byte;
                         }
                     }
@@ -76,13 +77,13 @@ fn main() -> io::Result<()> {
         };
     }
 
-    let size = frame.len();
-    for wd in 0..SQUARE {
-        for hd in 0..SQUARE { 
-            frame[hd][(wd*3)] = 5;
-            frame[hd+(size-SQUARE)][(WIDTH-SQUARE+(wd*3))] = 255;
-        }
-    }
+    // let size = frame.len();
+    // for wd in 0..SQUARE {
+    //     for hd in 0..SQUARE { 
+    //         frame[hd][(wd*3)] = 5;
+    //         frame[hd+(size-SQUARE)][(WIDTH-SQUARE+(wd*3))] = 255;
+    //     }
+    // }
     
     encode(&mut frame, output);
 
