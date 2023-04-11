@@ -1,11 +1,11 @@
 use std::{process::{Command, Stdio}, io::Write, path::PathBuf};
 
 // 1 square == 3x3 pixels -> 2 bytes
-pub const FPS: usize = 1;
-pub const SQUARE: usize = 120;
-pub const HEIGHT: usize = 1080; // 2180;
+pub const FPS: usize = 60;
+pub const SQUARE: usize = 3;
+pub const HEIGHT: usize = 2180;
 
-pub const WIDTH: usize = 1920; // 3840;
+pub const WIDTH: usize = 3840;
 pub const BWIDTH: usize = WIDTH*3;
 pub const UWIDTH: usize = WIDTH*2/SQUARE;
 
@@ -20,10 +20,10 @@ pub fn encode(data: &mut Vec<[u8; BWIDTH]>, output: PathBuf) {
         "-s", &format!("{WIDTH}x{HEIGHT}"),
         "-r", &FPS.to_string(),
         "-i", "-",
-        "-filter:v", "format=yuv420p",
         "-c:v", "libx264",
+        "-crf", "0",
         // "-tag:v", "hvc1",
-        // "-threads", "9",
+        "-threads", "9",
         &format!("{}", output.to_str().unwrap()),
     ]).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::inherit());
     

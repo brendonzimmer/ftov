@@ -33,14 +33,13 @@ fn main() -> io::Result<()> {
     let mut reader = BufReader::new(File::open(input)?);
     let mut buf = [0u8; UWIDTH];
     loop {
-        println!("starting loop");
         match reader.read(&mut buf) {
-            Ok(0) => {println!("breaking"); break;},
+            Ok(0) => break,
             Ok(num) => {
                 let iter = buf[..num].chunks_exact(2);
                 
                 iter.clone().for_each(|pair| {
-                    println!("Writing {:?}", pair);
+                    // println!("Writing {:?}", pair);
                     for wd in 0..SQUARE {
                         for hd in 0..SQUARE { 
                             if frame[h+hd][w+1+(wd*3)] != 0 || frame[h+hd][w+2+(wd*3)] != 0 {
@@ -54,7 +53,6 @@ fn main() -> io::Result<()> {
                 });
 
                 if let Some(byte) = iter.remainder().first() {
-                    println!("Writing byte {}", byte);
                     for wd in 0..SQUARE {
                         for hd in 0..SQUARE { 
                             if frame[h+hd][w+1+(wd*3)] != 0 || frame[h+hd][w+2+(wd*3)] != 0 {
@@ -71,7 +69,6 @@ fn main() -> io::Result<()> {
                 for _ in 0..SQUARE {
                     frame.push([0u8; BWIDTH]);
                 }
-                println!("{} bytes read", num);
             },
             Err(e) => panic!("Error reading file: {}", e)
         };
