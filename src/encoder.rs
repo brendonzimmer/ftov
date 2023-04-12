@@ -30,13 +30,6 @@ pub fn encode(mut input: BufReader<File>, output: PathBuf, meta: Metadata) {
                 let frames = ((bytes as f64/2.0).ceil()/(meta.vf_sqs as f64)).ceil() as usize;
                 let mut remain_squares = ((frames * meta.vf_sqs) as f64 - (bytes as f64/2.0).ceil()).ceil() as usize;
                 let vw_left = remain_squares % meta.vw_sqs;
-                
-                // dbg!(&remainder);
-                // dbg!(bytes);
-                // dbg!(remainder.len());
-                // dbg!(frames);
-                // dbg!(remain_squares);
-                // dbg!(vw_left);
 
                 if remainder.len() > 0 {
                     remain_squares -= vw_left;
