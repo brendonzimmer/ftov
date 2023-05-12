@@ -1,6 +1,7 @@
 
 use std::{io::{Write, BufReader, Read}, path::PathBuf, process::{Command, Stdio}, fs::File};
 
+// make last square R = 255
 pub fn encode(mut input: BufReader<File>, output: PathBuf, meta: Metadata) {
     let mut ffmpeg = Command::new("ffmpeg");
     ffmpeg.args(&[
