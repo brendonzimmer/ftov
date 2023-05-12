@@ -6,7 +6,7 @@ pub fn encode(mut input: BufReader<File>, output: PathBuf, meta: Metadata) {
     let mut ffmpeg = Command::new("ffmpeg");
     ffmpeg.args(&[
         "-f", "rawvideo",
-        "-pix_fmt", "rgb24",
+        "-pix_fmt", "monob",
         "-s", &format!("{}x{}", meta.vw, meta.vh),
         "-r", &format!("{}", meta.fps),
         "-i", "-",
@@ -22,7 +22,6 @@ pub fn encode(mut input: BufReader<File>, output: PathBuf, meta: Metadata) {
     let mut stdin = x.stdin.as_ref().expect("Failed to get stdin");
 
     let mut bytes = 0;
-    let mut first_byte = true;
     let mut remainder = vec![];
     let mut buf = vec![0u8; meta.buffer_size];
     loop {
@@ -40,25 +39,14 @@ pub fn encode(mut input: BufReader<File>, output: PathBuf, meta: Metadata) {
                 }
 
                 stdin.write(&vec![0u8; 3*remain_squares*meta.sq*meta.sq]).expect("Failed to write row to stdin");
-                
-                first_byte = true;
                 break;
             },
             Ok(num) => { // maybe make R spell filename // mapping could be done in parallel
                 let pixels = remainder.iter().copied().chain(
-                    buf[..num].chunks(2).flat_map(|b| {
-                    let mut pixel = vec![0u8, b[0], 0u8];
-                    if b.len() == 2 {
-                        pixel[2] = b[1];
-                    }
-
-                    if first_byte {
-                        first_byte = false;
-                        pixel[0] = 255;
-                    }
-
-                    pixel.repeat(meta.sq)
-                })).collect::<Vec<u8>>();
+                    buf[..num].iter().copied()).collect::<Vec<u8>>(); //.flat_map(|b| {
+                    // let mut pixel = vec![];
+                    // pixel.repeat(meta.sq)
+                //}));
                 
                 let rows = pixels.chunks_exact(meta.vw*3);
                 remainder =  if rows.remainder().len() > 0 { rows.remainder().to_vec() } else { vec![] };
