@@ -2,91 +2,34 @@ use std::{
     fs::File,
     io::{self, BufReader, Read, Write},
     path::PathBuf,
-    process::{Command, Stdio, exit},
+    process::{Command, Stdio},
 };
-
 use crate::metadata::Metadata;
 
-// make last square R = 255
-// pub fn encode(mut input: BufReader<File>, output: PathBuf, meta: Metadata) {
-//     let mut ffmpeg = Command::new("ffmpeg");
-//     ffmpeg
-//         .args(&[
-//             "-f",
-//             "rawvideo",
-//             "-pix_fmt",
-//             "monob",
-//             "-s",
-//             &format!("{}x{}", meta.vw, meta.vh),
-//             "-r",
-//             &format!("{}", meta.fps),
-//             "-i",
-//             "-",
-//             "-c:v",
-//             "libx264",
-//             "-crf",
-//             "0",
-//             &format!("{}", output.to_str().unwrap()),
-//         ])
-//         .stdin(Stdio::piped());
-//     // .stdout(Stdio::null())
-//     // .stderr(Stdio::inherit());
-
-//     let mut x = ffmpeg.spawn().expect("Failed to spawn ffmpeg");
-//     let mut stdin = x.stdin.as_ref().expect("Failed to get stdin");
-
-//     let mut bytes = 0;
-//     let mut remainder = vec![];
-//     let mut buf = vec![0u8; meta.buffer_size];
-//     loop {
-//         match input.read(&mut buf) {
-//             Ok(0) => {
-//                 let frames = ((bytes as f64 / 2.0).ceil() / (meta.vf_sqs as f64)).ceil() as usize;
-//                 let mut remain_squares =
-//                     ((frames * meta.vf_sqs) as f64 - (bytes as f64 / 2.0).ceil()).ceil() as usize;
-//                 let vw_left = remain_squares % meta.vw_sqs;
-
-//                 if remainder.len() > 0 {
-//                     remain_squares -= vw_left;
-//                     remainder.extend(vec![0u8; vw_left * meta.sq]); // [0u8].repeat(vw_left) or vec![0u8; vw_left]?
-//                     remainder = remainder.repeat(meta.sq);
-//                     stdin
-//                         .write(&remainder)
-//                         .expect("Failed to write row to stdin");
-//                 }
-
-//                 stdin
-//                     .write(&vec![0u8; remain_squares * meta.sq * meta.sq])
-//                     .expect("Failed to write row to stdin");
-//                 break;
-//             }
-//             Ok(num) => {
-//                 // maybe make R spell filename // mapping could be done in parallel
-//                 let pixels = remainder
-//                     .iter()
-//                     .copied()
-//                     .chain(buf[..num].iter().copied())
-//                     .collect::<Vec<u8>>();
-
-//                 stdin.write(&pixels).expect("Failed to write row to stdin");
-
-//                 bytes += num;
-//             }
-//             Err(e) => panic!("Error reading file: {}", e),
-//         };
-//     }
-
-//     stdin.flush().expect("Failed to flush stdin");
-//     drop(stdin);
-//     x.wait().expect("Failed to wait for ffmpeg");
-// }
-
-pub fn write_frame(mut input: BufReader<File>, output: PathBuf, meta: Metadata) -> io::Result<()> {
-    let Metadata {sw, sh, ss, fps, buffer_size } = meta;
+pub fn encode(mut input: BufReader<File>, output: PathBuf, meta: Metadata) -> io::Result<()> {
+    let Metadata {w, h, sw, sh, ss, fps, buffer_size } = meta;
     
-    let mut buffer = vec![0; buffer_size];
+    let mut ffmpeg = Command::new("ffmpeg");
+    ffmpeg
+        .args(&[
+            "-f", "rawvideo",
+            "-pix_fmt", "monob",
+            "-s", &format!("{}x{}", w, h),
+            "-r", &format!("{}", fps),
+            "-i", "-",
+            "-c:v", "libx264",
+            "-crf", "0",
+            &format!("{}", output.to_str().unwrap()),
+        ])
+        .stdin(Stdio::piped());
+    // .stdout(Stdio::null())
+    // .stderr(Stdio::inherit());
 
-    while let Ok(bytes_read) = input.read(&mut buffer) {
+    let mut x = ffmpeg.spawn().expect("Failed to spawn ffmpeg");
+    let mut stdin = x.stdin.as_ref().expect("Failed to get stdin");
+
+    let mut buffer = vec![0; buffer_size];
+    while let Ok(bytes_read) = input.read(&mut buffer) {        
         if bytes_read == 0 {
             break;
         }
@@ -117,18 +60,27 @@ pub fn write_frame(mut input: BufReader<File>, output: PathBuf, meta: Metadata) 
 
             #[cfg(debug_assertions)] println!("-"); // print '-' to denote a new frame
 
-            // frames row by row
+            let mut byte: u8 = 0;
+            let mut bit_count = 0;
             for h in 0..sh {
-                // each square row by row
                 for dy in 0..ss {
                     for w in 0..sw {
-                        // each square column by column
                         for dx in 0..ss {
+                            byte = (byte << 1) | frames[h][w][dx][dy];  
+                            bit_count += 1;
+
                             #[cfg(debug_assertions)] print!("{}", frames[h][w][dx][dy]);
+
+                            if bit_count == 8 {
+                                stdin.write(&[byte]);
+                                byte = 0;
+                                bit_count = 0;
+                            }
                         }
-                        #[cfg(debug_assertions)] print!(" ");
+                        #[cfg(debug_assertions)] print!("|");
                     }
-                    #[cfg(debug_assertions)] println!(); // newline after printing each row of squares
+
+                    #[cfg(debug_assertions)] println!();
                 }
 
                 #[cfg(debug_assertions)]
@@ -136,8 +88,15 @@ pub fn write_frame(mut input: BufReader<File>, output: PathBuf, meta: Metadata) 
                     println!(); // newline after printing each frame row
                 }
             }
+            // Check if there are remaining bits after all squares are processed.
+            if bit_count != 0 {
+                stdin.write(&[byte << (8 - bit_count)]);
+            }
         }
     }
 
+    stdin.flush().expect("Failed to flush stdin");
+    drop(stdin);
+    x.wait().expect("Failed to wait for ffmpeg");
     Ok(())
 }

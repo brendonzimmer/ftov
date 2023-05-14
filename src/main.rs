@@ -5,7 +5,7 @@ mod metadata;
 use args::Args;
 use clap::Parser;
 use metadata::Metadata;
-use encoder::write_frame;
+use encoder::encode;
 use std::{fs::File, io::{self, BufReader}, path::Path};
 
 fn main() -> io::Result<()> {
@@ -18,7 +18,7 @@ fn main() -> io::Result<()> {
         panic!("Input must be a file, not a directory")
     }
 
-    write_frame(
+    encode(
         BufReader::new(File::open(input)?),
         output,
         Metadata::new(width, height, fps, square, buffer)
