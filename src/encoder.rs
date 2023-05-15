@@ -40,13 +40,14 @@ pub fn encode(mut input: BufReader<File>, output: PathBuf, meta: Metadata) -> io
         }
 
         let mut b_row: BitVec<u8, Msb0> = BitVec::new();
-        let mut b_row_idx = 0;
+        let mut row_idx = 0;
         let mut h_count = 0;
         for bit in buffer[..bytes_read].view_bits::<Msb0>() {
             b_row.push(*bit);
-            b_row_idx += 1;
+            row_idx += 1;
 
-            if b_row_idx == sw {
+            // will not print row until it is full BUT will print frames even if not full
+            if row_idx == sw {
                 for _ in 0..ss { // meant to print the same row sh times
                     // prints one row of frame
                     for b in b_row.iter() {
@@ -62,9 +63,35 @@ pub fn encode(mut input: BufReader<File>, output: PathBuf, meta: Metadata) -> io
                 }
                 println!();
 
-                b_row_idx = 0;
+                row_idx = 0;
                 b_row.clear();
             }
+        }
+        
+        // if there are any bits left (unfilled row or frame)
+        if !b_row.is_empty() {
+            println!("unfinished square row (added {} to finish)", sw-row_idx);
+            b_row.extend(std::iter::repeat(false).take(sw - row_idx));
+            for _ in 0..ss { // meant to print the same row sh times
+                // prints one row of frame
+                for b in b_row.iter() {
+                    print!("{}", if *b { row_one } else { row_zero });
+                }
+                println!();
+            }
+            row_idx = 0;
+            b_row.clear();
+            h_count += ss;
+            
+            println!("unfinished frame (added {} rows to finish)", h - h_count);
+            for _ in 0..(h - h_count) {
+                for _ in 0..sw {
+                    print!("{}", row_zero);
+                }
+                println!();
+            }
+
+            println!("-");
         }
     }
     
