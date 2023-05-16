@@ -1,5 +1,8 @@
 /target
 .DS_Store
 .vscode
+
 *.mp4
+*.gif
 *test*
+*.out.*

@@ -14,19 +14,18 @@ pub struct Args {
 
     /// Width of the video in pixels
     #[arg(short = 'w', long, value_name = "NUMBER", default_value_t = 1920)]
-    pub width: usize,
+    pub width: u16,
 
     /// Height of the video in pixels
     #[arg(short = 'h', long, value_name = "NUMBER", default_value_t = 1080)]
-    pub height: usize,
+    pub height: u16,
 
     /// Defines the size of one file bit in pixels
     #[arg(short, long, value_name = "NUMBER", default_value_t = 3)]
-    pub square: usize,
+    pub square: u16,
 
     /// Frames per second
     #[arg(short, long, value_name = "NUMBER", default_value_t = 30)]
-    #[arg(value_parser = clap::value_parser!(u8).range(1..=120))]
     pub fps: u8,
 
     /// Size of the buffer to use to read the input (in bytes)

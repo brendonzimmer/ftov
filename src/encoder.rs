@@ -1,15 +1,16 @@
 use std::{
     fs::File,
-    io::{self, BufReader, Read, Write},
+    io::{BufReader, Read, Write},
     path::PathBuf,
-    process::{Command, Stdio}, u8,
+    process::{Command, Stdio},
 };
 use crate::metadata::Metadata;
 use bitvec::prelude::*;
 
-pub fn encode(mut input: BufReader<File>, output: PathBuf, meta: Metadata) -> io::Result<()> {
+pub fn encode(mut input: BufReader<File>, mut output: PathBuf, meta: Metadata) -> Result<(), Box<dyn std::error::Error>> {
     let Metadata {w, h, sw, sh, ss, fps, buffer_size } = meta;
     
+    output.set_extension("mp4");
     let mut ffmpeg = Command::new("ffmpeg");
     ffmpeg
         .args(&[
@@ -19,7 +20,8 @@ pub fn encode(mut input: BufReader<File>, output: PathBuf, meta: Metadata) -> io
             "-r", &format!("{}", fps),
             "-i", "-",
             "-c:v", "libx264",
-            "-crf", "0",
+            "-pix_fmt", "yuv420p",
+            "-crf", "0", // 1 to view in quicktime
             &format!("{}", output.to_str().unwrap()),
         ])
         .stdin(Stdio::piped());
@@ -31,8 +33,8 @@ pub fn encode(mut input: BufReader<File>, output: PathBuf, meta: Metadata) -> io
 
     let mut buffer = vec![0; buffer_size];
     
-    let row_zero = &bitvec![u8, Msb0; 0; ss];
-    let row_one = &bitvec![u8, Msb0; 1; ss];
+    let row_zero = &bitvec![u8, Msb0; 0; ss.into()];
+    let row_one = &bitvec![u8, Msb0; 1; ss.into()];
 
     while let Ok(bytes_read) = input.read(&mut buffer) {        
         if bytes_read == 0 {
@@ -72,9 +74,9 @@ pub fn encode(mut input: BufReader<File>, output: PathBuf, meta: Metadata) -> io
         }
         
         // if there are any bits left (unfilled row or frame)
-        if !b_row.is_empty() {
+        if !b_row.is_empty() || h_count != 0 {
             #[cfg(debug_assertions)] println!("unfinished square row at idx {row_idx} (added {} sq_rows to finish)", sw-row_idx);
-            b_row.extend(std::iter::repeat(false).take(sw - row_idx));
+            b_row.extend(std::iter::repeat(false).take((sw - row_idx).into()));
             let mut sender: BitVec<u8, Msb0> = BitVec::new();
             for _ in 0..ss { // meant to print the same row sh times
                 // prints one row of frame
@@ -85,7 +87,6 @@ pub fn encode(mut input: BufReader<File>, output: PathBuf, meta: Metadata) -> io
                 #[cfg(debug_assertions)] println!();
             }
             stdin.write(sender.as_raw_slice()).expect("Failed to write to stdin");
-            row_idx = 0;
             b_row.clear();
             h_count += ss;
             
