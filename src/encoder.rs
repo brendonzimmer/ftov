@@ -15,12 +15,12 @@ pub fn encode(mut input: BufReader<File>, mut output: PathBuf, meta: Metadata) -
     ffmpeg
         .args(&[
             "-f", "rawvideo",
-            "-pix_fmt", "monob",
+            "-pixel_format", "monob", // input pixels
             "-s", &format!("{}x{}", w, h),
             "-r", &format!("{}", fps),
-            "-i", "-",
-            "-c:v", "libx264",
-            "-pix_fmt", "yuv420p",
+            "-i", "-", // use stdin
+            "-c:v", "libx264", // h.264 encoding
+            "-pix_fmt", "yuv420p", // output pixels
             "-crf", "0", // 1 to view in quicktime
             &format!("{}", output.to_str().unwrap()),
         ])
