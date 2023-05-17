@@ -2,7 +2,7 @@ use core::fmt;
 use bitvec::prelude::*;
 
 #[derive(Debug)]
-pub struct SquarePattern<T = u8, O = Msb0> where T: BitStore, O: BitOrder {
+pub struct SquarePattern<T, O> where T: BitStore, O: BitOrder {
     /// the vector of bits to repeat
     bitvec: BitVec<T, O>,
     /// the side length of the square
@@ -24,11 +24,11 @@ impl<T, O> SquarePattern<T, O> where T: BitStore, O: BitOrder {
         }
         
         if fr_width % sq_length != 0 || fr_width < sq_length {
-            return Err(SquarePatternError::InvalidWidth(fr_width + (fr_width % sq_length)));
+            return Err(SquarePatternError::InvalidWidth(fr_width, sq_length));
         }
 
         if (bitvec.len() * sq_length) % fr_width != 0 {
-            return Err(SquarePatternError::InvalidBitVecLength((fr_width - ((bitvec.len()*sq_length) % fr_width))/sq_length));
+            return Err(SquarePatternError::InvalidBitVecLength(bitvec.len(), sq_length, fr_width));
         }
 
         Ok(Self {
@@ -42,7 +42,7 @@ impl<T, O> SquarePattern<T, O> where T: BitStore, O: BitOrder {
     }
 }
 
-impl Iterator for SquarePattern {
+impl<T, O> Iterator for SquarePattern<T, O> where T: BitStore, O: BitOrder {
     type Item = bool;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -70,7 +70,7 @@ impl Iterator for SquarePattern {
     }
 }
 
-trait SquarePatternIter<T = u8, O = Msb0> where T: BitStore, O: BitOrder {
+pub trait SquarePatternIter<T, O> where T: BitStore, O: BitOrder {
     fn square_pattern(self, sq_length: usize, fr_width: usize) -> Result<SquarePattern<T, O>, SquarePatternError>;
 }
 
@@ -83,16 +83,16 @@ impl<T, O> SquarePatternIter<T, O> for BitVec<T, O> where T: BitStore, O: BitOrd
 #[derive(Debug)]
 pub enum SquarePatternError {
     InvalidSquare,
-    InvalidWidth(usize),
-    InvalidBitVecLength(usize),
+    InvalidWidth(usize, usize),
+    InvalidBitVecLength(usize, usize, usize),
 }
 
 impl fmt::Display for SquarePatternError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidSquare => write!(f, "Square length must be >= 1"),
-            Self::InvalidWidth(valid) => write!(f, "Frame width must be a multiple of square length\nThe next valid frame width is: {}", valid),
-            Self::InvalidBitVecLength(len) => write!(f, "In order to have valid squares on the last row, the length of the bitvec times the square length must be divisible by the frame width\nExtend the bitvec by {} bits for the next valid length", len),
+            Self::InvalidWidth(w, ss) => write!(f, "Frame width ({w}) is not a multiple of square length ({ss}) - remainder {}", w%ss),
+            Self::InvalidBitVecLength(len, ss, w) => write!(f, "(Bitvec length) * (square length) [{len}*{ss}] is not divisible by frame width ({w}) - remainder {}", (len*ss)%w),
         }
     }
 }
@@ -114,14 +114,14 @@ mod tests {
     fn test_invalid_width() {
         let bits = bitvec![u8, Msb0; 1, 0, 1, 0];
         let result = bits.square_pattern(2, 5);
-        assert!(matches!(result, Err(SquarePatternError::InvalidWidth(6))));
+        assert!(matches!(result, Err(SquarePatternError::InvalidWidth(5, 2))));
     }
 
     #[test]
     fn test_invalid_bitvec_length() {
         let bits = bitvec![u8, Msb0; 1, 0, 1];
         let result = bits.square_pattern(2, 4);
-        assert!(matches!(result, Err(SquarePatternError::InvalidBitVecLength(1))));
+        assert!(matches!(result, Err(SquarePatternError::InvalidBitVecLength(3, 2, 4))));
     }
 
     #[test]

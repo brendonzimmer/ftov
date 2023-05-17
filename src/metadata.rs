@@ -21,15 +21,15 @@ pub struct Metadata {
 
 impl Metadata {
     pub fn new(w: u16, h: u16, fps: u8, ss: u16, buffer_size: usize) -> Result<Self, MetadataError> {        
+        if h < ss {
+            return Err(MetadataError::InvalidHeight);
+        }
+        
         if ss < 1 || w % ss != 0 || h % ss != 0 {
             return Err(MetadataError::InvalidSquare)
         }
 
-        if h < ss {
-            return Err(MetadataError::InvalidHeight);
-        }
-
-        if w < 1 || w % 8 != 0 {
+        if w < 1 {
             return Err(MetadataError::InvalidWidth);
         }
 
@@ -58,7 +58,7 @@ impl fmt::Display for MetadataError {
         match self {
             Self::InvalidSquare => write!(f, "Square size must be a factor of the video width and height and >= 1"),
             Self::InvalidHeight => write!(f, "The video height must be >= square size"),
-            Self::InvalidWidth => write!(f, "The video width must be a multiple of 8 and >= 1"),
+            Self::InvalidWidth => write!(f, "The video width must be >= 1"),
         }
     }
 }

@@ -1,6 +1,7 @@
 mod args;
 mod iter;
 mod encoder;
+mod decoder;
 mod metadata;
 
 use args::Args;
@@ -9,7 +10,7 @@ use encoder::encode;
 use metadata::Metadata;
 use std::{fs::File, io::BufReader, path::Path};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn run() -> Result<(), Box<dyn std::error::Error>> {
     let Args {
         input,
         output,
@@ -30,4 +31,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         output.unwrap_or_else(|| Path::new("./").with_file_name(input.file_name().unwrap())),
         Metadata::new(width, height, fps, square, buffer)?,
     )?)
+}
+
+fn main() {
+    if let Err(e) = run() {
+        eprintln!("Error: {}", e);
+    }
 }
